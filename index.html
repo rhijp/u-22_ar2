@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR.js Real-time Pose-based Model</title>
+    <!-- AR.js and A-Frame -->
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/1.7.2/aframe/build/aframe-ar.js"></script>
+    <!-- Three.js for custom 3D model manipulation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Styles for the buttons -->
+    <style>
+        #buttons {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        button {
+            padding: 15px;
+            margin: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body style="margin: 0; overflow: hidden;">
+
+    <div id="buttons">
+        <button id="recognizeMovement">動きを認識</button>
+        <button id="displayAR">ARで表示</button>
+    </div>
+
+    <div id="poseRecognition" style="display:none;">
+        <video id="cameraFeed" autoplay style="width: 100%; height: auto;"></video>
+    </div>
+
+    <a-scene id="arScene" embedded arjs style="display:none;">
+        <a-marker preset="hiro">
+            <a-entity id="animated-model" gltf-model="#your-model" scale="0.5 0.5 0.5" position="0 0 0"></a-entity>
+        </a-marker>
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        // Replace with the URL of your WebSocket server
+        const socket = new WebSocket('ws://your-websocket-server');
+
+        // Buttons
+        const recognizeMovementBtn = document.getElementById('recognizeMovement');
+        const displayARBtn = document.getElementById('displayAR');
+
+        // Sections
+        const buttonsDiv = document.getElementById('buttons');
+        const poseRecognitionDiv = document.getElementById('poseRecognition');
+        const arScene = document.getElementById('arScene');
+        const cameraFeed = document.getElementById('cameraFeed');
+
+        // When "動きを認識" button is clicked
+        recognizeMovementBtn.addEventListener('click', function() {
+            buttonsDiv.style.display = 'none';
+            poseRecognitionDiv.style.display = 'block';
+
+            // Start video capture for pose recognition
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    cameraFeed.srcObject = stream;
+
+                    // Simulate pose recognition and sending data (replace with actual pose recognition code)
+                    setInterval(() => {
+                        const postureData = {
+                            rotationX: Math.random() * 360,
+                            rotationY: Math.random() * 360,
+                            rotationZ: Math.random() * 360,
+                            posX: 0,
+                            posY: 0,
+                            posZ: 0
+                        };
+                        socket.send(JSON.stringify(postureData));
+                    }, 1000); // Send data every second
+                });
+        });
+
+        // When "ARで表示" button is clicked
+        displayARBtn.addEventListener('click', function() {
+            buttonsDiv.style.display = 'none';
+            arScene.style.display = 'block';
+
+            // Start AR session
+            socket.onmessage = function(event) {
+                const postureData = JSON.parse(event.data);
+                updateModel(postureData);
+            };
+        });
+
+        function updateModel(postureData) {
+            // Get the model entity
+            const model = document.querySelector('#animated-model');
+
+            // Apply received posture data to model's rotation
+            model.object3D.rotation.x = THREE.Math.degToRad(postureData.rotationX);
+            model.object3D.rotation.y = THREE.Math.degToRad(postureData.rotationY);
+            model.object3D.rotation.z = THREE.Math.degToRad(postureData.rotationZ);
+
+            // Optionally, update position or scale if needed
+            model.object3D.position.set(postureData.posX, postureData.posY, postureData.posZ);
+        }
+    </script>
+</body>
+</html>
